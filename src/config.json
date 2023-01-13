@@ -1,0 +1,21 @@
+{   
+    "pretrained_model": "bert-base-uncased",
+
+
+    "base_path": "./",
+    "model_name": "dialogbert",
+    "loss_data_name": "dialogbert",
+
+
+    "max_multiturn": 7,
+    "max_utterance": 32,
+
+
+    "batch_size": 30,
+    "epochs": 100,
+    "lr": 5e-5,
+
+
+    "early_stop_criterion": 10,
+    "result_num": 10
+}
