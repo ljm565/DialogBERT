@@ -9,12 +9,8 @@ from transformers import BertModel, BertLMHeadModel, BertConfig, BertForPreTrain
 class UtteranceEncoder(nn.Module):
     def __init__(self, config):
         super(UtteranceEncoder, self).__init__()
-        # self.bert_config = BertConfig.from_pretrained(config.pretrained_model)
-        # self.model = BertModel(self.bert_config)
-        # self.pretrained_model = config.pretrained_model
-        # self.model = BertForPreTraining.from_pretrained(self.pretrained_model)
-        self.encoder_config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
-        self.model = BertForPreTraining(self.encoder_config)
+        self.config = config
+        self.model = BertForPreTraining(self.config)
 
 
     def forward(self, x, mask):
@@ -30,12 +26,8 @@ class UtteranceEncoder(nn.Module):
 class ContextEncoder(nn.Module):
     def __init__(self, config):
         super(ContextEncoder, self).__init__()
-        # self.bert_config = BertConfig.from_pretrained(config.pretrained_model)
-        # self.model = BertModel(self.bert_config)
-        # self.pretrained_model = config.pretrained_model
-        # self.model = BertModel.from_pretrained(self.pretrained_model)
-        self.encoder_config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
-        self.model = BertModel(self.encoder_config)
+        self.config = config
+        self.model = BertModel(self.config)
 
 
     def forward(self, x, mask):
@@ -48,11 +40,10 @@ class ContextEncoder(nn.Module):
 class MaskedUtteranceRegression(nn.Module):
     def __init__(self, config):
         super(MaskedUtteranceRegression, self).__init__()
-        # self.bert_config = BertConfig.from_pretrained(config.pretrained_model)
-        self.bert_config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
-        self.hidden_dim = self.bert_config.hidden_size
-        self.dropout = self.bert_config.hidden_dropout_prob
-        self.layer_norm_eps = self.bert_config.layer_norm_eps
+        self.config = config
+        self.hidden_dim = self.config.hidden_size
+        self.dropout = self.config.hidden_dropout_prob
+        self.layer_norm_eps = self.config.layer_norm_eps
 
         self.encoding_converter = nn.Sequential(
             nn.Dropout(self.dropout),
@@ -71,9 +62,8 @@ class MaskedUtteranceRegression(nn.Module):
 class DistributedUtteranceOrderRanking(nn.Module):
     def __init__(self, config, tokenizer):
         super(DistributedUtteranceOrderRanking, self).__init__()
-        # self.bert_config = BertConfig.from_pretrained(config.pretrained_model)
-        self.bert_config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
-        self.hidden_dim = self.bert_config.hidden_size
+        self.config = config
+        self.hidden_dim = self.config.hidden_size
         self.pad_token_id = tokenizer.pad_token_id
         self.pos_pad_token_id = tokenizer.pos_pad_token_id
 
@@ -105,24 +95,13 @@ class DistributedUtteranceOrderRanking(nn.Module):
 class NextUtteranceGeneration(nn.Module):
     def __init__(self, config, tokenizer):
         super(NextUtteranceGeneration, self).__init__()
-        # self.bert_config = BertConfig.from_pretrained(config.pretrained_model)
-        # self.bert_config.is_decoder = True
-        # self.bert_config.add_cross_attention = True
-        # self.model = BertLMHeadModel(self.bert_config)
-        
-        # self.model = BertLMHeadModel.from_pretrained(config.pretrained_model, is_decoder=True, add_cross_attention=True)
         self.pad_token_id = tokenizer.pad_token_id
         self.vocab_size = tokenizer.vocab_size
-        self.encoder_config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
-        self.encoder_config.is_decoder = True
-        self.encoder_config.add_cross_attention = True
-        self.model = BertLMHeadModel(self.encoder_config)
+        self.config = config
+        self.config.is_decoder = True
+        self.config.add_cross_attention = True
+        self.model = BertLMHeadModel(self.config)
 
-
-        # self.decoder_layer = nn.TransformerDecoderLayer(d_model=self.bert_config.hidden_size, nhead=self.bert_config.num_attention_heads)
-        # self.transformer_decoder = nn.TransformerDecoder(self.decoder_layer, num_layers=self.bert_config.num_hidden_layers)
-        # self.emb_layer = nn.Embedding(self.vocab_size, self.bert_config.hidden_size)
-        # self.fc_layer = nn.Linear(self.bert_config.hidden_size, self.vocab_size)
 
     def make_pad_mask(self, x, id):
         mask = torch.where(x==id, 0, 1)
@@ -136,20 +115,15 @@ class NextUtteranceGeneration(nn.Module):
             attention_mask=trg_pad_mask,
             encoder_hidden_states=x,
             encoder_attention_mask=cntx_pad_mask)
-
-        # trg = self.emb_layer(trg)
-        # output = self.transformer_decoder(trg.transpose(0, 1), x.transpose(0, 1))#, tgt_mask=trg_pad_mask.transpose(0,1).bool(), memory_mask=cntx_pad_mask.transpose(0,1).bool())
-        # output = self.fc_layer(output.transpose(0, 1))
-
         return output.logits
 
 
 
 # DialogBERT
 class DialogBERT(nn.Module):
-    def __init__(self, config, tokenizer, device):
+    def __init__(self, tokenizer, device):
         super(DialogBERT, self).__init__()
-        self.config = config
+        self.config = BertConfig(vocab_size=30522, hidden_size=256, num_hidden_layers=6, num_attention_heads=2, intermediate_size=1024)
         self.tokenizer = tokenizer
         self.pad_token_id = tokenizer.pad_token_id
         self.pos_pad_token_id = tokenizer.pos_pad_token_id

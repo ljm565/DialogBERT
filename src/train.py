@@ -58,7 +58,7 @@ class Trainer:
             self.dataloaders = {s: DataLoader(d, self.batch_size, shuffle=False) for s, d in self.dataset.items() if s == 'test'}
 
         # model, optimizer, loss
-        self.model = DialogBERT(self.config, self.tokenizer, self.device).to(self.device)
+        self.model = DialogBERT(self.tokenizer, self.device).to(self.device)
         self.nug_criterion = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         self.duor_criterion = nn.KLDivLoss()
         self.mur_criterion = nn.MSELoss()
