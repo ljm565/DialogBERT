@@ -66,62 +66,9 @@ def main(config_path:Config, args:ArgumentParser):
     elif args.mode == 'inference':
         print('Start inferencing...\n')
         trainer.inference('test', config.result_num)
-            
-    elif args.mode == 'chatting':
-        msg = """
-        Chatbot starts..
-        If you want to chat new topic, enter the "new()"..
-        If you want to exit, enter the "exit()"..
-        
-        Please enter the 3 multi-turn dialogues..
-        """
-        print(msg + '\n')
-
-        tokenizer = trainer.tokenizer
-        queries, turn, state = [], 0, 'A'
-        while 1:
-            turn += 1
-
-            # for initializing topic of dialogues
-            if len(queries) < 3:
-                while len(queries) < 3:
-                    state = 'A' if state == 'Q' else 'Q'
-                    query = input(state + str(turn) + ': ')
-                    queries.append(query)
-                    turn += 1
-                    if query == 'new()':
-                        queries, turn, state = [], 0, 'A'
-                        print('Please enter new 3 multi-turn dialogues..\n')
-                        continue
-                    elif query == 'exit()':
-                        break
-            
-            # for multi-turn chatting
-            else:
-                state = 'A' if state == 'Q' else 'Q'
-                query = input(state + str(turn) + ': ')
-                queries.append(query)
-                turn += 1
-                if query == 'new()':
-                    queries, turn, state = [], 0, 'A'
-                    print('Please enter new 3 multi-turn dialogues..\n')
-                    continue
-                elif query == 'exit()':
-                    break
-
-            # query preprocessing
-            query = preprocessing_query(queries, tokenizer)
-            
-            # answer of the model
-            state = 'A' if state == 'Q' else 'Q'
-            query = trainer.chatting(query)
-            queries.append(query)
-            print(state + str(turn) + ': ' + query )
-
-        print('Chatbot ends..\n')
 
     else:
-        print("Please select mode among 'train', 'inference', and 'chatting'..")
+        print("Please select mode between 'train' and 'inference'..")
         sys.exit()
 
 
@@ -132,7 +79,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-d', '--device', type=str, required=True, choices=['cpu', 'gpu'])
-    parser.add_argument('-m', '--mode', type=str, required=True, choices=['train', 'inference', 'chatting'])
+    parser.add_argument('-m', '--mode', type=str, required=True, choices=['train', 'inference'])
     parser.add_argument('-c', '--cont', type=int, default=0, required=False)
     parser.add_argument('-n', '--name', type=str, required=False)
     args = parser.parse_args()

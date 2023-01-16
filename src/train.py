@@ -54,7 +54,7 @@ class Trainer:
                 s: DataLoader(d, self.batch_size, shuffle=True) if s == 'train' else DataLoader(d, self.batch_size, shuffle=False)
                 for s, d in self.dataset.items()}
         else:
-            self.dataset = {s: DLoader(load_dataset(p), self.tokenizer, self.config) for s, p in self.data_path.items() if s == 'test'}
+            self.dataset = {s: DLoader(load_dataset(p), self.tokenizer, self.config, s) for s, p in self.data_path.items() if s == 'test'}
             self.dataloaders = {s: DataLoader(d, self.batch_size, shuffle=False) for s, d in self.dataset.items() if s == 'test'}
 
         # model, optimizer, loss
@@ -183,26 +183,27 @@ class Trainer:
                         trg = trg[:, j].unsqueeze(1)
                         nug, _, _ = self.model(src, trg, lm_trg, pos_id, shuffled, phase)
                         nug_output, _ = nug
-                        # filtered_logits = top_k_top_p_filtering(nug_output[:, -1], top_k=50, top_p=1)
-                        # next_token = torch.multinomial(torch.softmax(filtered_logits, dim=-1), num_samples=5)
-                        # total_tok = []
-                        # for tok in next_token:
-                        #     total_tok.append(tok[random.randrange(5)])
-                        # trg = torch.cat((trg, torch.LongTensor(total_tok).unsqueeze(1).to(self.device)), dim=1)
-                        trg = torch.cat((trg, torch.argmax(nug_output[:, -1], dim=-1).unsqueeze(1)), dim=1)
+                        if self.config.mode == 'greedy':
+                            nug_output = torch.argmax(nug_output[:, -1], dim=-1).unsqueeze(1)
+                        elif self.config.mode == 'sampling':
+                            nug_output = nug_output[:, -1] / self.config.temperature
+                            nug_output = top_k_top_p_filtering(nug_output, top_k=50, top_p=1)
+                            nug_output = torch.multinomial(torch.softmax(nug_output, dim=-1), num_samples=1)
+                        trg = torch.cat((trg, nug_output), dim=1)
                     else:
                         nug, _, _ = self.model(src, trg, lm_trg, pos_id, shuffled, phase)
                         nug_output, _ = nug
-                        # filtered_logits = top_k_top_p_filtering(nug_output[:, -1], top_k=50, top_p=1)
-                        # next_token = torch.multinomial(torch.softmax(filtered_logits, dim=-1), num_samples=5)
-                        # total_tok = []
-                        # for tok in next_token:
-                        #     total_tok.append(tok[random.randrange(5)])
-                        # trg = torch.cat((trg, torch.LongTensor(total_tok).unsqueeze(1).to(self.device)), dim=1)
-                        trg = torch.cat((trg, torch.argmax(nug_output[:, -1], dim=-1).unsqueeze(1)), dim=1)
+                        if self.config.mode == 'greedy':
+                            nug_output = torch.argmax(nug_output[:, -1], dim=-1).unsqueeze(1)
+                        elif self.config.mode == 'sampling':
+                            nug_output = nug_output[:, -1] / self.config.temperature
+                            nug_output = top_k_top_p_filtering(nug_output, top_k=50, top_p=1)
+                            nug_output = torch.multinomial(torch.softmax(nug_output, dim=-1), num_samples=1)
+                        trg = torch.cat((trg, nug_output), dim=1)
                     decoder_all_output.append(nug_output[:, -1].unsqueeze(1).detach().cpu())
                         
-                all_output.append(torch.argmax(torch.cat(decoder_all_output, dim=1), dim=-1))
+                all_output.append(torch.cat(decoder_all_output, dim=1))
+                break
 
         print(loss / len(self.dataloaders[phase].dataset))
 
@@ -214,7 +215,7 @@ class Trainer:
             nist2 = cal_scores(all_ref, all_pred, 'nist', 2)
             nist4 = cal_scores(all_ref, all_pred, 'nist', 4)
         except:
-            nist2 = nist4 = 0
+            nist2, nist4 = 0, 0
         print('\nInference Score')
         print('bleu2: {}, bleu4: {}, nist2: {}, nist4: {}'.format(bleu2, bleu4, nist2, nist4))
 
@@ -223,26 +224,3 @@ class Trainer:
         print_samples(all_ref, all_pred, ids, self.tokenizer)
 
         return bleu2, bleu4, nist2, nist4
-
-
-    def chatting(self, query):
-        query_l = len(query)
-        query = torch.LongTensor(query).unsqueeze(0).to(self.device)
-        sep_token_id = self.tokenizer.sep_token_id
-
-        for _ in range(self.max_len):
-            output = torch.argmax(self.model(query)[:, -1], dim=-1)
-            query = torch.cat((query, output.unsqueeze(1)), dim=1)
-
-            if output.item() == sep_token_id:
-                break
-
-        query = query[0, query_l:].detach().cpu().tolist()
-        try:
-            query = query[:query.index(sep_token_id)]
-        except:
-            pass
-
-        query = self.tokenizer.decode(query)
-        
-        return query

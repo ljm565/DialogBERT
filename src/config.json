@@ -17,5 +17,7 @@
 
 
     "early_stop_criterion": 10,
-    "result_num": 10
+    "result_num": 10,
+    "temperature": 3,
+    "mode": "greedy"
 }
