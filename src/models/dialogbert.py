@@ -169,7 +169,6 @@ class DialogBERT(nn.Module):
 
         # utterance and context encoding
         output = self.utteranceEnc(src, uttn_pad_mask)
-        # uttn_pad_mask = uttn_pad_mask.view(uttn_pad_mask.size(0), -1)
         output = self.cntxEnc(output, cntx_pad_mask)   # B x multi_turn x hidden_dim 
         
         if phase == 'train':
@@ -186,7 +185,6 @@ class DialogBERT(nn.Module):
         
         # for NUG
         nug_id = self.select_NUG_id(shuffled)
-        # nug_output = self.nug(output[nug_id], trg[nug_id], uttn_pad_mask[nug_id])
         nug_output = self.nug(output[nug_id], trg[nug_id], cntx_pad_mask[nug_id])
         
         return (nug_output, trg[nug_id]), (mur_output, mur_trg), (duor_output, duor_trg)
